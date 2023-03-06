@@ -1,0 +1,33 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.6.xsd">
+  <changeSet id="1" author="CronyPest">
+    <tagDatabase tag="start"/>
+  </changeSet>
+  <changeSet id="1.1" author="CronyPest">
+    <createTable tableName="page">
+      <column autoIncrement="true" name="id" type="INT">
+        <constraints nullable="false" primaryKey="true"/>
+      </column>
+      <column name="site_id" type="INT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="path" type="VARCHAR(500)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="code" type="INT">
+        <constraints nullable="false"/>
+      </column>
+      <column name="content" type="MEDIUMTEXT">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+  </changeSet>
+  <changeSet id="1.2" author="CronyPest">
+    <createIndex indexName="path" tableName="page" unique="true">
+      <column name="site_id"/>
+      <column name="path"/>
+    </createIndex>
+  </changeSet>
+</databaseChangeLog>
