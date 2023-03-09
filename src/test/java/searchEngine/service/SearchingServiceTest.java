@@ -4,6 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.hamcrest.Matchers;
@@ -13,6 +14,8 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import searchEngine.model.FoundPage;
+import searchEngine.model.Page;
 import searchEngine.model.SearchResult;
 import searchEngine.model.Site;
 import searchEngine.repository.DBConnection;
@@ -25,6 +28,8 @@ class SearchingServiceTest {
   private DBConnection connectionMock;
   @MockBean
   private SearchProcessor searcherMock;
+  @MockBean
+  private ResultConstructor constructorMock;
 
   @Autowired
   public SearchingServiceTest(SearchingService searchingService) {
@@ -83,14 +88,30 @@ class SearchingServiceTest {
   }
 
   private void resultsFound() {
-    Mockito.doReturn(List.of(SearchResult.builder()
-            .site("site")
-            .siteName("siteName")
-            .uri("uri")
-            .title("title")
-            .snippet("snippet")
-            .relevance(0.1f).build()))
-        .when(searcherMock).call();
+    Page page = Page.builder()
+        .path("path")
+        .code(200)
+        .content("content")
+        .lemmas(new HashMap<>())
+        .build();
+
+    FoundPage foundPage = FoundPage.builder()
+        .page(page)
+        .relevance(0.1f)
+        .rarestLemma("l").build();
+
+    SearchResult result = SearchResult.builder()
+        .site("site")
+        .siteName("siteName")
+        .uri("uri")
+        .title("title")
+        .snippet("snippet")
+        .relevance(0.1f).build();
+
+    Mockito.doReturn(List.of(foundPage)).when(searcherMock).call();
+    Mockito.doReturn(List.of(result)).when(constructorMock).constructResults(List.of(foundPage));
+    Mockito.doReturn(List.of(result, result))
+        .when(constructorMock).constructResults(List.of(foundPage, foundPage));
   }
 
   private void nothingFound() {

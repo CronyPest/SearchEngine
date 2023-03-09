@@ -6,7 +6,7 @@ import lombok.Value;
 
 @Value
 @Builder
-public class SearchResult implements Comparable<SearchResult> {
+public class SearchResult {
 
   @NonNull
   String site;
@@ -20,9 +20,4 @@ public class SearchResult implements Comparable<SearchResult> {
   String snippet;
   @NonNull
   float relevance;
-
-  @Override
-  public int compareTo(SearchResult o) {
-    return Float.compare(this.relevance, o.getRelevance());
-  }
 }

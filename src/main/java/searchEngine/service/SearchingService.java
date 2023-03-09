@@ -9,11 +9,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.PostConstruct;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Service;
+import searchEngine.model.FoundPage;
 import searchEngine.model.SearchResult;
 import searchEngine.model.Site;
 import searchEngine.repository.DBConnection;
@@ -22,9 +24,10 @@ import searchEngine.repository.DBConnection;
 public class SearchingService implements ApplicationContextAware {
 
   private final DBConnection connection;
-  private final Map<String, List<SearchResult>> foundResults = new HashMap<>();
+  private final Map<String, List<FoundPage>> foundPages = new HashMap<>();
   private final ExecutorService executor;
   private ApplicationContext context;
+  private ResultConstructor constructor;
 
   @Autowired
   public SearchingService(DBConnection connection, ExecutorService executor) {
@@ -32,23 +35,28 @@ public class SearchingService implements ApplicationContextAware {
     this.executor = executor;
   }
 
+  @PostConstruct
+  private void postConstruct() {
+    constructor = context.getBean(ResultConstructor.class);
+  }
+
   public Map<String, Object> executeSearchQuery(String query, String site, int offset, int limit) {
-    List<SearchResult> searchResults;
+    List<FoundPage> searchResults;
     String searchTask = query + site;
-    if (foundResults.containsKey(searchTask)) {
-      searchResults = foundResults.get(searchTask);
+    if (foundPages.containsKey(searchTask)) {
+      searchResults = foundPages.get(searchTask);
       return getResult(searchResults, offset, limit);
     }
-    foundResults.clear();
+    foundPages.clear();
     searchResults = site == null ? allSitesSearch(query) : oneSiteSearch(query, site);
-    foundResults.put(searchTask, searchResults);
+    foundPages.put(searchTask, searchResults);
     return getResult(searchResults, offset, limit);
   }
 
-  private List<SearchResult> allSitesSearch(String query) {
+  private List<FoundPage> allSitesSearch(String query) {
     List<Site> sites = connection.getSites();
     @SuppressWarnings("unchecked")
-    CompletableFuture<List<SearchResult>>[] futures = sites.stream()
+    CompletableFuture<List<FoundPage>>[] futures = sites.stream()
         .map(Site::getId)
         .map(id -> CompletableFuture.supplyAsync(() -> executeSiteSearch(query, id), executor))
         .toArray(CompletableFuture[]::new);
@@ -60,26 +68,27 @@ public class SearchingService implements ApplicationContextAware {
         .collect(Collectors.toList());
   }
 
-  private List<SearchResult> oneSiteSearch(String query, String site) {
+  private List<FoundPage> oneSiteSearch(String query, String site) {
     int siteId = connection.defineSiteId(site);
-    List<SearchResult> results = executeSiteSearch(query, siteId);
+    List<FoundPage> results = executeSiteSearch(query, siteId);
     if (results.size() > 1) {
       results.sort(Comparator.reverseOrder());
     }
     return results;
   }
 
-  private List<SearchResult> executeSiteSearch(String query, int siteId) {
+  private List<FoundPage> executeSiteSearch(String query, int siteId) {
     SearchProcessor searcher = context.getBean(SearchProcessor.class, query, siteId);
     return searcher.call();
   }
 
-  private Map<String, Object> getResult(List<SearchResult> searchResults, int offset, int limit) {
+  private Map<String, Object> getResult(List<FoundPage> foundPages, int offset, int limit) {
     Map<String, Object> result = new HashMap<>();
     result.put("result", true);
-    result.put("count", searchResults.size());
-    result.put("data",
-        searchResults.subList(offset, Math.min(offset + limit, searchResults.size())));
+    result.put("count", foundPages.size());
+    List<SearchResult> data = constructor.constructResults(
+        foundPages.subList(offset, Math.min(offset + limit, foundPages.size())));
+    result.put("data", data);
     return result;
   }
 

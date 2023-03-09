@@ -5,22 +5,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 import javax.annotation.PostConstruct;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import searchEngine.model.FoundPage;
 import searchEngine.model.Lemma;
 import searchEngine.model.Page;
-import searchEngine.model.SearchResult;
 import searchEngine.repository.DBConnection;
 import searchEngine.service.morphology.Lemmatizer;
 
 @Component
 @Scope("prototype")
-public class SearchProcessor implements ApplicationContextAware, Callable<List<SearchResult>> {
+public class SearchProcessor implements ApplicationContextAware, Callable<List<FoundPage>> {
 
   private final String query;
   private final int siteId;
@@ -41,7 +39,7 @@ public class SearchProcessor implements ApplicationContextAware, Callable<List<S
   }
 
   @Override
-  public List<SearchResult> call() {
+  public List<FoundPage> call() {
     HashMap<String, Integer> lemmaList = lemmatizer.getLemmaList(query);
     List<Lemma> lemmas = connection.getLemmas(new ArrayList<>(lemmaList.keySet()), siteId);
     if (lemmas.size() != lemmaList.size()) {
@@ -55,11 +53,11 @@ public class SearchProcessor implements ApplicationContextAware, Callable<List<S
         return new ArrayList<>(); //Возвращаем пустой список
       }
     }
-    return pagesToSearchResults(pages);
+    return pagesWithRelevance(pages);
   }
 
-  private List<SearchResult> pagesToSearchResults(List<Page> pages) {
-    List<SearchResult> results = new ArrayList<>();
+  private List<FoundPage> pagesWithRelevance(List<Page> pages) {
+    List<FoundPage> results = new ArrayList<>();
     HashMap<Page, Float> pagesWithAbsoluteRelevance = new HashMap<>();
     float maxRelevance = 0f;
     for (Page page : pages) {
@@ -69,21 +67,8 @@ public class SearchProcessor implements ApplicationContextAware, Callable<List<S
     }
     float finalMaxRelevance = maxRelevance;
     pagesWithAbsoluteRelevance.forEach((page, absRelevance) -> {
-      Document document = Jsoup.parse(page.getContent());
-      String text = document.select("body").text();
-      String site = page.getSite();
-      String siteName = page.getSiteName();
-      String uri = page.getPath();
-      String title = document.title();
-      String snippet = lemmatizer.getSnippet(text, rarestLemma.getLemma());
-      float relevance = absRelevance / finalMaxRelevance;
-      SearchResult result = SearchResult.builder()
-          .site(site)
-          .siteName(siteName)
-          .uri(uri)
-          .title(title)
-          .snippet(snippet)
-          .relevance(relevance).build();
+      FoundPage result = FoundPage.builder().page(page).relevance(absRelevance / finalMaxRelevance)
+          .rarestLemma(rarestLemma.getLemma()).build();
       results.add(result);
     });
     return results;

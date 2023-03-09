@@ -37,11 +37,14 @@ public class DBConnection {
   private final int batchSize = 500;
   private final ExecutorService executor;
   private final JdbcTemplate jdbcTemplate;
+  private final StatisticConstructor statConstructor;
 
   @Autowired
-  public DBConnection(JdbcTemplate jdbcTemplate, ExecutorService executor) {
+  public DBConnection(JdbcTemplate jdbcTemplate, ExecutorService executor,
+      StatisticConstructor statConstructor) {
     this.jdbcTemplate = jdbcTemplate;
     this.executor = executor;
+    this.statConstructor = statConstructor;
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -261,7 +264,7 @@ public class DBConnection {
         GROUP BY site_id) temp1 ON temp1.site_id = s.id
         JOIN (SELECT site_id, count(*) lemma_count FROM lemma
         GROUP BY site_id) temp2 ON temp2.site_id = s.id""";
-    return new StatisticConstructor(jdbcTemplate.queryForList(sql)).constructStatistic();
+    return statConstructor.constructStatistic(jdbcTemplate.queryForList(sql));
   }
 
 }

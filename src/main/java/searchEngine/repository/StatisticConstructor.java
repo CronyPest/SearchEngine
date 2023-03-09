@@ -6,17 +6,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Component;
 import searchEngine.service.IndexationStatus;
 
+@Component
 public class StatisticConstructor {
 
-  private final List<Map<String, Object>> resultMaps;
-
-  public StatisticConstructor(List<Map<String, Object>> resultMaps) {
-    this.resultMaps = resultMaps;
-  }
-
-  public Map<String, Object> constructStatistic() {
+  public Map<String, Object> constructStatistic(List<Map<String, Object>> resultMaps) {
     Map<String, Object> result = new HashMap<>();
     Map<String, Object> statistics = new HashMap<>();
     Map<String, Object> total = new HashMap<>();
